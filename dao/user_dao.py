@@ -25,23 +25,3 @@ def login(user: User):
         return None
     finally:
         db.closeCon(con)
-
-# def modifyPassword(user: User):
-#     """
-#     修改密码
-#     :param user: 用户实体
-#     :return: 返回执行的记录条数
-#     """
-#     con = None
-#     try:
-#         con = db.getCon()
-#         cursor = con.cursor()
-#         cursor.execute(
-#             f"update t_user set password='{user.newPassword}' where userName='{user.name}'")
-#         return cursor.rowcount
-#     except Exception as e:
-#         print(e)
-#         con.rollback()
-#         return None
-#     finally:
-#         db.closeCon(con)

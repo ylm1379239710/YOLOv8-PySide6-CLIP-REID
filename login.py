@@ -127,9 +127,9 @@ class Ui_Form(QWidget):
             QMessageBox.warning(None, '系统提示', '用户名和密码不能为空！')
         else:
             user = User(userName, password)
-            resultUser = userDao.login(user)
+            resultUser = user_dao.login(user)
             if resultUser:
-                userDao.currentUser = user
+                user_dao.currentUser = user
                 self.m = MainWindow()  # 实例化主窗体
                 self.m.show()  # 打开主窗体
                 self.hide()  # 隐藏登录窗体

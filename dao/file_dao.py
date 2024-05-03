@@ -12,7 +12,11 @@ def add_file_data(file: FileData):
     try:
         con = db.getCon()
         cursor = con.cursor()
-        cursor.execute(f"insert into file (title, description,upload_date,file_path,file_name,file_size,type) VALUES ('{file.title}', '{file.description}', '{file.upload_date}', '{file.file_path}', '{file.file_name}', '{file.file_size}', '{file.type}')")
+        query = (
+            f"insert into file (title, description,upload_date,file_path,file_name,file_size,type) VALUES (%s, %s, %s, %s, %s, %s, %s)")
+        data = (
+            file.title, file.description, file.upload_date, file.file_path, file.file_name, file.file_size, file.type)
+        cursor.execute(query, data)
         get_last_id_query = "SELECT LAST_INSERT_ID()"
         cursor.execute(get_last_id_query)
         last_id = cursor.fetchone()[0]
@@ -44,6 +48,7 @@ def get_all_file_data():
     finally:
         db.closeCon(con)
 
+
 def delete_file_data_by_id(data_id):
     """
     删除文件
@@ -53,7 +58,8 @@ def delete_file_data_by_id(data_id):
     try:
         con = db.getCon()
         cursor = con.cursor()
-        cursor.execute(f"delete from file where id = '{data_id}'")
+        query = (f"delete from file where id = %s")
+        cursor.execute(query, data_id)
     except Exception as e:
         print(e)
         con.rollback()
@@ -61,7 +67,8 @@ def delete_file_data_by_id(data_id):
     finally:
         db.closeCon(con)
 
-def search_data_by_condition(title,data_type):
+
+def search_data_by_condition(title, data_type):
     """
     根据条件查询文件
     :return: 查询成功返回符合条件数据，失败返回None
@@ -72,18 +79,29 @@ def search_data_by_condition(title,data_type):
         cursor = con.cursor()
         if title != '':
             if data_type == "All":
-                cursor.execute(f"select id, title, upload_date, type, description from file where title like '%{title}%'")
+                query = (
+                    f"select id, title, upload_date, type, description from file where title like %s")
+                data = '%'+title+'%'
+                cursor.execute(query, data)
             elif data_type == "Video":
-                cursor.execute(f"select id, title, upload_date, type, description from file where title like '%{title}%' and type in ('mp4','avi')")
+                query = (
+                    f"select id, title, upload_date, type, description from file where title like %s and type in ('mp4','avi')")
+                data = '%' + title + '%'
+                cursor.execute(query, data)
             else:
-                cursor.execute(f"select id, title, upload_date, type, description from file where title like '%{title}%' and type in ('jpg','jpeg','png','bmp')")
+                query = (
+                    f"select id, title, upload_date, type, description from file where title like %s and type in ('jpg','jpeg','png','bmp')")
+                data = '%' + title + '%'
+                cursor.execute(query, data)
         else:
             if data_type == "All":
                 cursor.execute(f"select id, title, upload_date, type, description from file")
             elif data_type == "Video":
-                cursor.execute(f"select id, title, upload_date, type, description from file where type in ('mp4','avi')")
+                cursor.execute(
+                    f"select id, title, upload_date, type, description from file where type in ('mp4','avi')")
             else:
-                cursor.execute(f"select id, title, upload_date, type, description from file where type in ('jpg','jpeg','png','bmp')")
+                cursor.execute(
+                    f"select id, title, upload_date, type, description from file where type in ('jpg','jpeg','png','bmp')")
         rows = cursor.fetchall()
         return rows
     except Exception as e:
@@ -93,7 +111,8 @@ def search_data_by_condition(title,data_type):
     finally:
         db.closeCon(con)
 
-def edit_by_id(id,title,description):
+
+def edit_by_id(id, title, description):
     """
     根据id编辑文件数据
     :return: 编辑成功无返回，失败返回None
@@ -102,7 +121,11 @@ def edit_by_id(id,title,description):
     try:
         con = db.getCon()
         cursor = con.cursor()
-        cursor.execute(f"update file set title = '{title}',description = '{description}' where id = '{id}'")
+        query = (
+            f"update file set title = %s,description = %s where id = %s")
+        data = (title, description, id)
+        cursor.execute(query, data)
+        cursor.execute()
     except Exception as e:
         print(e)
         con.rollback()
@@ -120,7 +143,9 @@ def get_data_by_id(id):
     try:
         con = db.getCon()
         cursor = con.cursor()
-        cursor.execute(f"select id, title, description, upload_date, file_path, file_name, file_size, type from file where id = '{id}'")
+        query = (
+            f"select id, title, description, upload_date, file_path, file_name, file_size, type from file where id = %s")
+        cursor.execute(query, id)
         data = cursor.fetchone()
         return data
     except Exception as e:
