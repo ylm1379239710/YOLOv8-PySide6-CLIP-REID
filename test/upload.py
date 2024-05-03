@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QFileInfo
 import os
-import sqlite3
-
+from dao import file_dao
+from entity.file_model import FileData
+from datetime import datetime
 
 class VideoUploader(QWidget):
     def __init__(self):
@@ -30,16 +31,28 @@ class VideoUploader(QWidget):
         fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
                                                   "All Files (*);;Videos (*.mp4 *.avi)", options=options)
         if fileName:
-            self.add_video_to_db(fileName)
+            file_info = QFileInfo(fileName)
+            print(file_info.fileName())
+            print(file_info.filePath())
+            print(file_info.size())
+            # 提取文件扩展名
+            base_name, extension = os.path.splitext(file_info.filePath())
+            extension = extension[1:]  # 移除点号
+            print(extension)
+            file_data = FileData(file_info.fileName(),datetime.now(),file_info.filePath(),file_info.fileName(),file_info.fileName(),file_info.size(),extension)
+            # self.add_video_to_db(file_data)
             self.label.setText(f'Video uploaded: {fileName}')
+            self.get_all_data()
 
-    def add_video_to_db(self, path):
-        conn = sqlite3.connect('test.db')
-        c = conn.cursor()
-        c.execute("INSERT INTO videos (path) VALUES (?)", (path,))
-        conn.commit()
-        conn.close()
+    def add_video_to_db(self, file_data):
+        print(file_dao.add_file_data(file_data))
 
+    def get_all_data(self):
+        file_dao.get_all_file_data()
+        # 获取类实例的属性名
+        attr_names = [attr for attr in dir(FileData) if
+                      not attr.startswith('__') and not callable(getattr(FileData, attr))]
+        print(attr_names)
 
 if __name__ == '__main__':
     app = QApplication([])

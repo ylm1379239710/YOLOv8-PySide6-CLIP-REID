@@ -16,7 +16,8 @@ class FileData:
     file_size = None
     # 文件类型
     type = None
-    def __init__(self, title, upload_date,file_path,description,file_name,file_size,type):
+
+    def __init__(self, title, upload_date, file_path, description, file_name, file_size, type):
         self.title = title
         self.upload_date = upload_date
         self.file_path = file_path

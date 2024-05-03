@@ -1,5 +1,11 @@
+import os
+from datetime import datetime
+
 from PIL import Image
 from ultralytics.yolo.engine.predictor import BasePredictor
+
+from dao import record_dao
+from entity.record_model import Record
 from utils.build import load_inference_source
 from ultralytics.yolo.data.augment import classify_transforms
 from ultralytics.yolo.engine.predictor import BasePredictor
@@ -36,8 +42,8 @@ class YolovClipReidentifier(BasePredictor, QObject):
         super(YolovClipReidentifier, self).__init__()
         QObject.__init__(self)
         self.args = get_cfg(cfg, overrides)
-        self.args.classes=[0]
-        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
+        self.args.classes = [0]
+        project = self.args.project or Path(SETTINGS['runs_dir']) / 're-identify'
         name = f'ReidentificationOutput'
         self.save_dir = increment_path(Path(project) / name, exist_ok=self.args.exist_ok)
         self.done_warmup = False
@@ -48,7 +54,7 @@ class YolovClipReidentifier(BasePredictor, QObject):
         self.used_model_name = None  # The detection model name to use
         self.new_model_name = None  # Models that change in real time
         self.used_reid_model_name = None  # The reid model name to use
-        self.new_reid_model_name = None # Models that change in real time
+        self.new_reid_model_name = None  # Models that change in real time
         self.source = ''  # input source
         self.stop_dtc = False  # Termination detection
         self.continue_dtc = True  # pause
@@ -65,6 +71,7 @@ class YolovClipReidentifier(BasePredictor, QObject):
         self.model = None
         self.reid_model = None
         self.data = self.args.data  # data_dict
+        self.reid_results = None
         self.imgsz = None
         self.device = None
         self.dataset = None
@@ -83,188 +90,202 @@ class YolovClipReidentifier(BasePredictor, QObject):
     @torch.no_grad()
     def run(self):
         # try:
-            if self.args.verbose:
-                LOGGER.info('')
+        if self.args.verbose:
+            LOGGER.info('')
 
-            # set model
-            self.status_msg.emit('Loding Model...')
-            if not self.model:
+        # set model
+        self.status_msg.emit('Loding Model...')
+        if not self.model:
+            self.setup_model(self.new_model_name)
+            self.used_model_name = self.new_model_name
+        if not self.reid_model:
+            self.reid_model = CLIPReIDModel('./clipreid/configs/person/cnn_clipreid.yml',
+                                            self.new_reid_model_name)
+        # set source
+        self.imgsz = check_imgsz(self.args.imgsz, stride=self.model.stride, min_dim=2)  # check image size
+        if self.args.task == 'classify':
+            transforms = getattr(self.model.model, 'transforms', classify_transforms(self.imgsz[0]))
+        else:  # predict, segment
+            transforms = None
+        self.dataset = load_inference_source(source=self.source,
+                                             transforms=transforms,
+                                             imgsz=self.imgsz,
+                                             vid_stride=self.args.vid_stride,
+                                             stride=self.model.stride,
+                                             auto=self.model.pt)
+        self.source_type = self.dataset.source_type
+        self.vid_path, self.vid_writer = [None] * self.dataset.bs, [None] * self.dataset.bs
+
+        # Check save path/label
+        if self.save_res or self.save_txt:
+            (self.save_dir / 'labels' if self.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
+
+        # warmup model
+        if not self.done_warmup:
+            self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 3, *self.imgsz))
+            self.done_warmup = True
+
+        self.seen, self.windows, self.dt, self.batch = 0, [], (ops.Profile(), ops.Profile(), ops.Profile()), None
+
+        target_feat_list = []
+        img = torch.stack([self.reid_model.transform(Image.open(self.image_path).convert('RGB'))], dim=0)
+        # for _, (img, _, _, _, _, _) in enumerate(self.reid_model.target_img):
+        target_feat = self.reid_model.extract_feature(img)
+        target_feat_list.append(target_feat)
+        # start detection
+        # for batch in self.dataset:
+        count = 0  # run location frame
+        start_time = time.time()  # used to calculate the frame rate
+        batch = iter(self.dataset)
+        while True:
+            # Termination detection
+            if self.stop_dtc:
+                if self.vid_writer:
+                    if isinstance(self.vid_writer[-1], cv2.VideoWriter):
+                        self.vid_writer[-1].release()  # release final video writer
+                self.vid_cap.release()
+                self.status_msg.emit('Re-identification terminated')
+                if self.save_res or self.save_txt:
+                    self.status_msg.emit('Re-identification terminated! Save dir:' + str(self.save_dir))
+                    # 获取当前目录
+                    current_dir = os.getcwd()
+                    path = os.path.join(current_dir, str(self.save_dir / p.name))
+                    record = Record(p.name, datetime.now(), 're-identify', path, self.reid_results, None, None, None)
+                    record_dao.add_record(record)
+                break
+
+            # Change the model midway
+            if self.used_model_name != self.new_model_name:
+                # self.status_msg.emit('Change Model...')
                 self.setup_model(self.new_model_name)
                 self.used_model_name = self.new_model_name
-            if not self.reid_model:
-                self.reid_model = CLIPReIDModel('./clipreid/configs/person/cnn_clipreid.yml',
-                                                self.new_reid_model_name)
-            # set source
-            self.imgsz = check_imgsz(self.args.imgsz, stride=self.model.stride, min_dim=2)  # check image size
-            if self.args.task == 'classify':
-                transforms = getattr(self.model.model, 'transforms', classify_transforms(self.imgsz[0]))
-            else:  # predict, segment
-                transforms = None
-            self.dataset = load_inference_source(source=self.source,
-                                                 transforms=transforms,
-                                                 imgsz=self.imgsz,
-                                                 vid_stride=self.args.vid_stride,
-                                                 stride=self.model.stride,
-                                                 auto=self.model.pt)
-            self.source_type = self.dataset.source_type
-            self.vid_path, self.vid_writer = [None] * self.dataset.bs, [None] * self.dataset.bs
 
-            # Check save path/label
-            if self.save_res or self.save_txt:
-                (self.save_dir / 'labels' if self.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
+            # pause switch
+            if self.continue_dtc:
+                # time.sleep(0.001)
+                self.status_msg.emit('Re-identifying...')
+                batch = next(self.dataset)  # next data
 
-            # warmup model
-            if not self.done_warmup:
-                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 3, *self.imgsz))
-                self.done_warmup = True
+                self.batch = batch
+                path, im, im0s, self.vid_cap, _ = batch
+                visualize = increment_path(self.save_dir / Path(path).stem,
+                                           mkdir=True) if self.args.visualize else False
 
-            self.seen, self.windows, self.dt, self.batch = 0, [], (ops.Profile(), ops.Profile(), ops.Profile()), None
+                # Calculation completion and frame rate (to be optimized)
+                count += 1  # frame count +1
+                if self.vid_cap:
+                    all_count = self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)  # total frames
+                    self.progress_value = int(count / all_count * 1000)  # progress bar(0~1000)
+                    self.progress.emit(self.progress_value)
+                else:
+                    self.progress_value = self.percent_length
 
-            target_feat_list = []
-            img = torch.stack([self.reid_model.transform(Image.open(self.image_path).convert('RGB'))], dim=0)
-            # for _, (img, _, _, _, _, _) in enumerate(self.reid_model.target_img):
-            target_feat = self.reid_model.extract_feature(img)
-            target_feat_list.append(target_feat)
-            # start detection
-            # for batch in self.dataset:
-            count = 0  # run location frame
-            start_time = time.time()  # used to calculate the frame rate
-            batch = iter(self.dataset)
-            while True:
-                # Termination detection
-                if self.stop_dtc:
-                    if self.vid_writer:
-                        if isinstance(self.vid_writer[-1], cv2.VideoWriter):
-                            self.vid_writer[-1].release()  # release final video writer
-                    self.vid_cap.release()
-                    self.status_msg.emit('Re-identification terminated')
-                    if self.save_res or self.save_txt:
-                        self.status_msg.emit('Re-identification terminated! Save dir:'+str(self.save_dir))
-                    break
+                if count % 5 == 0 and count >= 5:  # Calculate the frame rate every 5 frames
+                    self.fps.emit(str(int(5 / (time.time() - start_time))))
+                    start_time = time.time()
+                # preprocess
+                with self.dt[0]:
+                    im = self.preprocess(im)
+                    if len(im.shape) == 3:
+                        im = im[None]  # expand for batch dim
+                # inference
+                with self.dt[1]:
+                    preds = self.model(im, augment=self.args.augment, visualize=visualize)
+                # postprocess
+                with self.dt[2]:
+                    self.results = self.postprocess(preds, im, im0s)
 
-                # Change the model midway
-                if self.used_model_name != self.new_model_name:
-                    # self.status_msg.emit('Change Model...')
-                    self.setup_model(self.new_model_name)
-                    self.used_model_name = self.new_model_name
+                if count % 5 == 0 and count >= 5:
+                    # reid main process
+                    milliseconds = self.vid_cap.get(cv2.CAP_PROP_POS_MSEC)
+                    seconds = milliseconds // 1000
 
-                # pause switch
-                if self.continue_dtc:
-                    # time.sleep(0.001)
-                    self.status_msg.emit('Re-identifying...')
-                    batch = next(self.dataset)  # next data
+                    for r in self.results:
+                        res_im = r.orig_img
+                        indexs = r.boxes.xyxy
+                        for target_feat in target_feat_list:
+                            for xyxy in indexs:
+                                xmin = int(xyxy[0].item())
+                                ymin = int(xyxy[1].item())
+                                xmax = int(xyxy[2].item())
+                                ymax = int(xyxy[3].item())
+                                crop = torch.stack([self.reid_model.transform(
+                                    Image.fromarray(res_im[ymin:ymax, xmin:xmax], 'RGB')
+                                )], dim=0)
+                                # crop = frame[ymin:ymax, xmin:xmax]
+                                crop_feat = self.reid_model.extract_feature(crop)
+                                current_similarity = self.reid_model.match(target_feat.cpu(), crop_feat.cpu())
+                                if current_similarity > 0.85:
+                                    self.status_msg.emit(str(seconds))
+                                    if self.reid_results is not None:
+                                        self.reid_results = self.reid_results + '/' + str(seconds)
+                                    else:
+                                        self.reid_results = str(seconds)
+                                    self.res_crop_img.emit(r.orig_img[ymin:ymax, xmin:xmax])
+                                    cv2.rectangle(res_im, (xmin, ymin), (xmax, ymax), (255, 0, 255), 3)
+                                if current_similarity > self.highest_similarity:
+                                    self.highest_similarity = current_similarity
+                    # visualize, save, write results
+                    n = len(im)  # To be improved: support multiple img
+                    for i in range(n):
+                        self.results[i].speed = {
+                            'preprocess': self.dt[0].dt * 1E3 / n,
+                            'inference': self.dt[1].dt * 1E3 / n,
+                            'postprocess': self.dt[2].dt * 1E3 / n}
+                        # p, im0 = (path[i], im0s[i].copy()) if self.source_type.webcam or self.source_type.from_img \
+                        p, im0 = (path[i], im0s[i].copy()) if self.source_type.from_img else (path, im0s.copy())
+                        p = Path(p)  # the source dir
+                        # s:::   video 1/1 (6/6557) 'path':
+                        # must, to get boxs\labels
+                        label_str = self.write_results(i, self.results, (p, im, im0))  # labels   /// original :s +=
 
-                    self.batch = batch
-                    path, im, im0s, self.vid_cap ,_= batch
-                    visualize = increment_path(self.save_dir / Path(path).stem,
-                                               mkdir=True) if self.args.visualize else False
+                        # labels and nums dict
+                        class_nums = 0
+                        target_nums = 0
+                        self.labels_dict = {}
+                        if 'no detections' in label_str:
+                            pass
+                        else:
+                            for ii in label_str.split(',')[:-1]:
+                                nums, label_name = ii.split('~')
+                                self.labels_dict[label_name] = int(nums)
+                                target_nums += int(nums)
+                                class_nums += 1
+                        # save img or video result
+                        if self.save_res:
+                            self.save_preds(self.vid_cap, i, str(self.save_dir / p.name))
+                        # Send test results
+                        self.res_img.emit(res_im)  # after reid
+                        # self.pre_img.emit(im0s if isinstance(im0s, np.ndarray) else im0s[0])  # Before testing
+                        # self.labels.emit(self.labels_dict)        # webcam need to change the def write_results
+                        self.class_num.emit(class_nums)
+                        self.target_num.emit(target_nums)
 
-                    # Calculation completion and frame rate (to be optimized)
-                    count += 1  # frame count +1
-                    if self.vid_cap:
-                        all_count = self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)  # total frames
-                        self.progress_value = int(count / all_count * 1000)  # progress bar(0~1000)
-                        self.progress.emit(self.progress_value)
-                    else:
-                        self.progress_value= self.percent_length
+                        if self.speed_thres != 0:
+                            time.sleep(self.speed_thres / 1000)  # delay , ms
+                    self.progress.emit(self.progress_value)  # progress bar
 
-                    if count % 5 == 0 and count >= 5:  # Calculate the frame rate every 5 frames
-                        self.fps.emit(str(int(5 / (time.time() - start_time))))
-                        start_time = time.time()
-                    # preprocess
-                    with self.dt[0]:
-                        im = self.preprocess(im)
-                        if len(im.shape) == 3:
-                            im = im[None]  # expand for batch dim
-                    # inference
-                    with self.dt[1]:
-                        preds = self.model(im, augment=self.args.augment, visualize=visualize)
-                    # postprocess
-                    with self.dt[2]:
-                        self.results = self.postprocess(preds, im, im0s)
+            # Re-identification completed
+            if self.progress_value == self.percent_length:
+                if self.vid_writer:
+                    if isinstance(self.vid_writer[-1], cv2.VideoWriter):
+                        self.vid_writer[-1].release()  # release final video writer
+                self.vid_cap.release()
+                self.status_msg.emit('Re-identification completed')
+                if self.save_res or self.save_txt:
+                    self.status_msg.emit('Re-identification completed! Save dir:' + str(self.save_dir))
+                    # 获取当前目录
+                    current_dir = os.getcwd()
+                    path = os.path.join(current_dir, str(self.save_dir / p.name))
+                    record = Record(p.name, datetime.now(), 're-identify', path, self.reid_results, None, None, None)
+                    record_dao.add_record(record)
+                self.progress.emit(0)  # progress bar
+                break
 
-                    if count % 5 == 0 and count >= 5:
-                        # reid main process
-                        milliseconds = self.vid_cap.get(cv2.CAP_PROP_POS_MSEC)
-                        seconds = milliseconds // 1000
-
-                        for r in self.results:
-                            res_im = r.orig_img
-                            indexs = r.boxes.xyxy
-                            for target_feat in target_feat_list:
-                                for xyxy in indexs:
-                                    xmin = int(xyxy[0].item())
-                                    ymin = int(xyxy[1].item())
-                                    xmax = int(xyxy[2].item())
-                                    ymax = int(xyxy[3].item())
-                                    crop = torch.stack([self.reid_model.transform(
-                                        Image.fromarray(res_im[ymin:ymax, xmin:xmax], 'RGB')
-                                    )], dim=0)
-                                    # crop = frame[ymin:ymax, xmin:xmax]
-                                    crop_feat = self.reid_model.extract_feature(crop)
-                                    current_similarity = self.reid_model.match(target_feat.cpu(), crop_feat.cpu())
-                                    if current_similarity > 0.85:
-                                        self.status_msg.emit('第' + str(seconds) + 's匹配到该行人')
-                                        self.res_crop_img.emit(r.orig_img[ymin:ymax, xmin:xmax])
-                                        cv2.rectangle(res_im, (xmin, ymin), (xmax, ymax), (255, 0, 255), 3)
-                                    if current_similarity > self.highest_similarity:
-                                        self.highest_similarity = current_similarity
-                        # visualize, save, write results
-                        n = len(im)  # To be improved: support multiple img
-                        for i in range(n):
-                            self.results[i].speed = {
-                                'preprocess': self.dt[0].dt * 1E3 / n,
-                                'inference': self.dt[1].dt * 1E3 / n,
-                                'postprocess': self.dt[2].dt * 1E3 / n}
-                            # p, im0 = (path[i], im0s[i].copy()) if self.source_type.webcam or self.source_type.from_img \
-                            p, im0 = (path[i], im0s[i].copy()) if self.source_type.from_img else (path, im0s.copy())
-                            p = Path(p)  # the source dir
-                            # s:::   video 1/1 (6/6557) 'path':
-                            # must, to get boxs\labels
-                            label_str = self.write_results(i, self.results, (p, im, im0))  # labels   /// original :s +=
-
-                            # labels and nums dict
-                            class_nums = 0
-                            target_nums = 0
-                            self.labels_dict = {}
-                            if 'no detections' in label_str:
-                                pass
-                            else:
-                                for ii in label_str.split(',')[:-1]:
-                                    nums, label_name = ii.split('~')
-                                    self.labels_dict[label_name] = int(nums)
-                                    target_nums += int(nums)
-                                    class_nums += 1
-                            # save img or video result
-                            if self.save_res:
-                                self.save_preds(self.vid_cap, i, str(self.save_dir / p.name))
-                            # Send test results
-                            self.res_img.emit(res_im)  # after reid
-                            # self.pre_img.emit(im0s if isinstance(im0s, np.ndarray) else im0s[0])  # Before testing
-                            # self.labels.emit(self.labels_dict)        # webcam need to change the def write_results
-                            self.class_num.emit(class_nums)
-                            self.target_num.emit(target_nums)
-
-                            if self.speed_thres != 0:
-                                time.sleep(self.speed_thres / 1000)  # delay , ms
-                        self.progress.emit(self.progress_value)  # progress bar
-
-                # Re-identification completed
-                if self.progress_value == self.percent_length:
-                    if self.vid_writer:
-                        if isinstance(self.vid_writer[-1], cv2.VideoWriter):
-                            self.vid_writer[-1].release()  # release final video writer
-                    self.vid_cap.release()
-                    self.status_msg.emit('Re-identification completed')
-                    if self.save_res or self.save_txt:
-                        self.status_msg.emit('Re-identification completed! Save dir:'+str(self.save_dir))
-                    self.progress.emit(0)  # progress bar
-                    break
-
-        # except Exception as e:
-        #     pass
-        #     print(e)
-        #     self.status_msg.emit('%s' % e)
+    # except Exception as e:
+    #     pass
+    #     print(e)
+    #     self.status_msg.emit('%s' % e)
 
     def get_annotator(self, img):
         return Annotator(img, line_width=self.args.line_thickness, example=str(self.model.names))
@@ -288,7 +309,7 @@ class YolovClipReidentifier(BasePredictor, QObject):
             orig_img = orig_img[i] if isinstance(orig_img, list) else orig_img
             shape = orig_img.shape
             pred[:, :4] = ops.scale_boxes(img.shape[2:], pred[:, :4], shape).round()
-            path, _, _, _,_ = self.batch
+            path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path
             results.append(Results(orig_img=orig_img, path=img_path, names=self.model.names, boxes=pred))
         # print(results)
@@ -341,13 +362,14 @@ class YolovClipReidentifier(BasePredictor, QObject):
                              BGR=True)
 
         return log_string
+
     def save_preds(self, vid_cap, idx, save_path):
         im0 = self.annotator.result()
         # save imgs
         if self.dataset.mode == 'image':
             cv2.imwrite(save_path, im0)
         else:  # 'video' or 'stream'
-            if self.vid_path: # 'video'
+            if self.vid_path:  # 'video'
                 if self.vid_path[idx] != save_path:  # new video
                     self.vid_path[idx] = save_path
                     if isinstance(self.vid_writer[idx], cv2.VideoWriter):
@@ -359,7 +381,6 @@ class YolovClipReidentifier(BasePredictor, QObject):
                     # else:  # stream
                     #     fps, w, h = 30, im0.shape[1], im0.shape[0]
                     save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                    print("video"+save_path)
                     self.vid_writer[idx] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                 self.vid_writer[idx].write(im0)
             else:  # 'stream'
@@ -368,6 +389,6 @@ class YolovClipReidentifier(BasePredictor, QObject):
                     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 # save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                if not self.vid_writer :
+                if not self.vid_writer:
                     self.vid_writer.append(cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h)))
             self.vid_writer[0].write(im0)

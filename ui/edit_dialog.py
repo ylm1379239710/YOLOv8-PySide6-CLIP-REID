@@ -59,11 +59,13 @@ class EditDialogBox(QDialog,object):
 
         self.confirm_button = QPushButton(Form)
         self.confirm_button.setObjectName(u"confirm_button")
+        self.confirm_button.clicked.connect(self.confirm)
 
         self.verticalLayout.addWidget(self.confirm_button)
 
         self.cancel_button = QPushButton(Form)
         self.cancel_button.setObjectName(u"cancel_button")
+        self.cancel_button.clicked.connect(self.reject)
 
         self.verticalLayout.addWidget(self.cancel_button)
 
@@ -72,6 +74,11 @@ class EditDialogBox(QDialog,object):
 
         QMetaObject.connectSlotsByName(Form)
     # setupUi
+    def confirm(self):
+        # 发出自定义信号
+        self.confirmed.emit()
+        # 关闭对话框
+        self.accept()
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(QCoreApplication.translate("Form", u"Form", None))

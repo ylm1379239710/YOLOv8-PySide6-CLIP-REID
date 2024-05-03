@@ -1,19 +1,23 @@
-# from UIFunctions import *
 from custom_grips import CustomGrip
-from ui.CustomMessageBox import MessageBox
+from ui.message_box import MessageBox
 from ui.home import Ui_MainWindow
 from utils.capnums import Camera
 from utils.predictor import YoloPredictor
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtWidgets import *
+from ui.rtsp_dialog import RtspDialog
+from utils.reidentifier import YolovClipReidentifier
 import json
 import sys
 import cv2
 import os
 
-from ui.rtsp_dialog import rtsp_dialog
-from utils.reidentifier import YolovClipReidentifier
+GLOBAL_STATE = False  # max min flag
+GLOBAL_TITLE_BAR = True
+# 按照数据库中的字段顺序包含了属性名
+FILE_FIELD_ORDER = ['ID', 'Title', 'UploadTime', 'Type', 'Description']
+RECORD_FIELD_ORDER = ['ID', 'Title', 'Time', 'Type']
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -26,15 +30,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setAttribute(Qt.WA_TranslucentBackground)  # rounded transparent
         self.setWindowFlags(Qt.FramelessWindowHint)  # Set window flag: hide window borders
-        UIFuncitons.uiDefinitions(self)
+        UIFunctions.uiDefinitions(self)
         # Show module shadows
-        UIFuncitons.shadow_style(self, self.Class_QF, QColor(162, 129, 247))
-        UIFuncitons.shadow_style(self, self.Target_QF, QColor(251, 157, 139))
-        UIFuncitons.shadow_style(self, self.Fps_QF, QColor(170, 128, 213))
-        UIFuncitons.shadow_style(self, self.Class_QF_2, QColor(162, 129, 247))
-        UIFuncitons.shadow_style(self, self.Target_QF_2, QColor(251, 157, 139))
-        UIFuncitons.shadow_style(self, self.Fps_QF_2, QColor(170, 128, 213))
-        # UIFuncitons.shadow_style(self, self.Model_QF, QColor(64, 186, 193))
+        UIFunctions.shadow_style(self, self.Class_QF, QColor(162, 129, 247))
+        UIFunctions.shadow_style(self, self.Target_QF, QColor(251, 157, 139))
+        UIFunctions.shadow_style(self, self.Fps_QF, QColor(170, 128, 213))
+        UIFunctions.shadow_style(self, self.Class_QF_2, QColor(162, 129, 247))
+        UIFunctions.shadow_style(self, self.Target_QF_2, QColor(251, 157, 139))
+        UIFunctions.shadow_style(self, self.Fps_QF_2, QColor(170, 128, 213))
+        # UIFunctions.shadow_style(self, self.Model_QF, QColor(64, 186, 193))
         # contents init
         self.ReidContentBox.hide()
         self.DataManageContentBox.hide()
@@ -68,8 +72,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.yolo_predict.progress.connect(lambda x: self.progress_bar.setValue(x))
         self.main_yolo_begin_sgl.connect(self.yolo_predict.run)
         self.yolo_predict.moveToThread(self.yolo_thread)
-
-
 
         # Model parameters
         self.model_box.currentTextChanged.connect(self.change_model)
@@ -164,31 +166,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # initialization
         self.load_config()
-
-        initial_data = [
-            ['Data', 'Row', '1'],
-            ['Data2', 'Row', '2'],
-            ['Data3', 'Row', '3'],
-            ['Data4', 'Row', '4'],
-            ['Data5', 'Row', '5'],
-            ['Data7', 'Row', '6'],
-            ['Data9', 'Row', '7'], ['Data', 'Row', '1'],
-            ['Data2', 'Row', '2'],
-            ['Data3', 'Row', '3'],
-            ['Data4', 'Row', '4'],
-            ['Data5', 'Row', '5'],
-            ['Data7', 'Row', '6'],
-            ['Data9', 'Row', '7'], ['Data', 'Row', '1'],
-            ['Data2', 'Row', '2'],
-            ['Data3', 'Row', '3'],
-            ['Data4', 'Row', '4'],
-            ['Data5', 'Row', '5'],
-            ['Data7', 'Row', '6'],
-            ['Data9', 'Row', '7'],
-        ]
-
-
-        self.table_widget.load_data(initial_data,self.page_box,self.total_page_num)
+        self.table_widget.load_data(1, self.page_box, self.total_page_num, FILE_FIELD_ORDER, self.add_button,
+                                    self.search_button, self.type_box, self.line_edit)
+        self.table_widget_2.load_data(2, self.page_box_2, self.total_page_num_2, RECORD_FIELD_ORDER, QPushButton(),
+                                      self.search_button_2, self.type_box_2, self.line_edit_2)
         # h_layout_1 = QHBoxLayout()
         # h_layout_1.addWidget(self.table_widget.page_spinbox)
         # h_layout_1.addWidget(self.table_widget.total_label)
@@ -200,19 +181,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # h_layout_2.addWidget(self.table_widget_2.total_label)
         # self.verticalLayout_45.addLayout(h_layout_2)
 
-
-        self.ToggleBotton.clicked.connect(lambda: UIFuncitons.toggleMenu(self, True))  # left navigation button
-        self.HomeBotton.clicked.connect(lambda: UIFuncitons.openPage(self, self.HomePage, True))
-        self.DetectButton.clicked.connect(lambda: UIFuncitons.openPage(self, self.DetectContentBox, True))
-        self.DataManageButton.clicked.connect(lambda: UIFuncitons.openPage(self, self.DataManageContentBox, True))
-        self.ReidButton.clicked.connect(lambda: UIFuncitons.openPage(self, self.ReidContentBox, True))
-        self.TaskRecordButton.clicked.connect(lambda: UIFuncitons.openPage(self, self.TaskRecordContentBox, True))
-        self.detect_set_button.clicked.connect(lambda: UIFuncitons.settingBox(self, self.prm_page, True))
-        self.reid_set_button.clicked.connect(lambda: UIFuncitons.settingBox(self, self.prm_page_2, True))
+        self.ToggleBotton.clicked.connect(lambda: UIFunctions.toggle_menu(self, True))  # left navigation button
+        self.HomeBotton.clicked.connect(lambda: UIFunctions.open_page(self, self.HomePage, True))
+        self.DetectButton.clicked.connect(lambda: UIFunctions.open_page(self, self.DetectContentBox, True))
+        self.DataManageButton.clicked.connect(lambda: UIFunctions.open_page(self, self.DataManageContentBox, True))
+        self.ReidButton.clicked.connect(lambda: UIFunctions.open_page(self, self.ReidContentBox, True))
+        self.TaskRecordButton.clicked.connect(lambda: UIFunctions.open_page(self, self.TaskRecordContentBox, True))
+        self.detect_set_button.clicked.connect(lambda: UIFunctions.setting_box(self, self.prm_page, True))
+        self.reid_set_button.clicked.connect(lambda: UIFunctions.setting_box(self, self.prm_page_2, True))
 
     # The main window displays the original image and detection results
-    @staticmethod
-    def show_image(img_src, label):
+    def show_image(self, img_src, label):
         try:
             ih, iw = img_src.shape[:2]
             w = label.geometry().width()
@@ -272,7 +251,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.yolo_clip_reidentifier.stop_dtc = False
             if self.run_button_2.isChecked():
                 self.run_button_2.setChecked(True)  # start button
-                self.save_txt_button_2.setEnabled(False)  # It is forbidden to check and save after starting the detection
+                self.save_txt_button_2.setEnabled(
+                    False)  # It is forbidden to check and save after starting the detection
                 self.save_res_button_2.setEnabled(False)
                 self.show_reid_status('Detecting...')
                 self.yolo_clip_reidentifier.continue_dtc = True  # Control whether Yolo is paused
@@ -307,6 +287,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.class_num.setText('--')
             self.target_num.setText('--')
             self.fps_num.setText('--')
+
     def show_reid_status(self, msg):
         self.status_bar_2.setText(msg)
         if 'Re-identification completed' in msg:
@@ -452,7 +433,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     # select network source
     def chose_rtsp(self):
-        self.rtsp_window = rtsp_dialog()
+        self.rtsp_window = RtspDialog()
         config_file = 'config/ip.json'
         if not os.path.exists(config_file):
             ip = "rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp"
@@ -469,7 +450,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     # select network source
     def chose_reid_rtsp(self):
-        self.rtsp_window = rtsp_dialog()
+        self.rtsp_window = RtspDialog()
         config_file = 'config/reid_ip.json'
         if not os.path.exists(config_file):
             ip = "rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp"
@@ -688,6 +669,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.class_num.setText('--')
         self.target_num.setText('--')
         self.fps_num.setText('--')
+
     def reid_stop(self):
         if self.yolo_clip_thread.isRunning():
             self.yolo_clip_thread.quit()  # end thread
@@ -760,6 +742,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.yolo_clip_reidentifier.new_reid_model_name = "./reid-models/%s" % self.select_reid_model
         self.show_reid_status('Change Reid Model：%s' % self.select_reid_model)
         # self.Model_name.setText(self.select_model)
+
     # label result
     # def show_labels(self, labels_dic):
     #     try:
@@ -810,7 +793,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # Optimize the adjustment when dragging the bottom and right edges of the window size
     def resizeEvent(self, event):
         # Update Size Grips
-        UIFuncitons.resize_grips(self)
+        UIFunctions.resize_grips(self)
 
     # Exit Exit thread, save settings
     def closeEvent(self, event):
@@ -848,7 +831,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.yolo_clip_thread.quit()
         sys.exit(0)
 
-    def crop_add(self, crop_img,View):
+    def crop_add(self, crop_img, View):
         frame = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
         img = QImage(frame.data, crop_img.shape[1], frame.shape[0], frame.shape[2] * frame.shape[1],
                      QImage.Format_RGB888)
@@ -862,13 +845,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         View.addItem(item)
 
 
-GLOBAL_STATE = False  # max min flag
-GLOBAL_TITLE_BAR = True
-
-
-class UIFuncitons(MainWindow):
+class UIFunctions(MainWindow):
     # Expand left menu
-    def toggleMenu(self, enable):
+    def toggle_menu(self, enable):
         if enable:
             standard = 68
             maxExtend = 180
@@ -888,9 +867,9 @@ class UIFuncitons(MainWindow):
             self.animation.start()
 
     # Open Detection Page
-    def openPage(self, showPage, enable):
+    def open_page(self, show_page, enable):
         if enable:
-            if showPage.height() == 0:
+            if show_page.height() == 0:
                 if self.HomePage.height() != 0:
                     self.HomePage.hide()
                     self.HomePage.setMaximumSize(0, 0)
@@ -907,14 +886,14 @@ class UIFuncitons(MainWindow):
                     self.TaskRecordContentBox.hide()
                     self.TaskRecordContentBox.setMaximumSize(0, 0)
 
-            showPage.show()
-            showPage.setMaximumSize(16777215, 16777215)
+            show_page.show()
+            show_page.setMaximumSize(16777215, 16777215)
 
     # Expand the settings menu on the right
-    def settingBox(self, setBox, enable):
+    def setting_box(self, set_box, enable):
         if enable:
             # GET WIDTH
-            widthRightBox = setBox.width()  # right set column width
+            widthRightBox = set_box.width()  # right set column width
             # widthLeftBox = self.LeftMenuBg.width()  # left column length
             maxExtend = 220
             standard = 0
@@ -933,7 +912,7 @@ class UIFuncitons(MainWindow):
             # self.left_box.setEasingCurve(QEasingCurve.InOutQuart)
 
             # ANIMATION RIGHT BOX
-            self.right_box = QPropertyAnimation(setBox, b"minimumWidth")
+            self.right_box = QPropertyAnimation(set_box, b"minimumWidth")
             self.right_box.setDuration(500)
             self.right_box.setStartValue(widthRightBox)
             self.right_box.setEndValue(widthExtended)
@@ -976,14 +955,14 @@ class UIFuncitons(MainWindow):
         # Double-click the title bar to maximize
         def dobleClickMaximizeRestore(event):
             if event.type() == QEvent.MouseButtonDblClick:
-                QTimer.singleShot(250, lambda: UIFuncitons.maximize_restore(self))
+                QTimer.singleShot(250, lambda: UIFunctions.maximize_restore(self))
 
         self.top.mouseDoubleClickEvent = dobleClickMaximizeRestore
 
         # MOVE WINDOW / MAXIMIZE / RESTORE
         def moveWindow(event):
             if GLOBAL_STATE:  # IF MAXIMIZED CHANGE TO NORMAL
-                UIFuncitons.maximize_restore(self)
+                UIFunctions.maximize_restore(self)
             if event.buttons() == Qt.LeftButton:  # MOVE
                 self.move(self.pos() + event.globalPos() - self.dragPos)
                 self.dragPos = event.globalPos()
@@ -998,7 +977,7 @@ class UIFuncitons(MainWindow):
         # MINIMIZE
         self.min_sf.clicked.connect(lambda: self.showMinimized())
         # MAXIMIZE/RESTORE
-        self.max_sf.clicked.connect(lambda: UIFuncitons.maximize_restore(self))
+        self.max_sf.clicked.connect(lambda: UIFunctions.maximize_restore(self))
         # CLOSE APPLICATION
         self.close_button.clicked.connect(self.close)
 
@@ -1016,6 +995,16 @@ class UIFuncitons(MainWindow):
         shadow.setBlurRadius(38)  # shadow radius
         shadow.setColor(Color)  # shadow color
         widget.setGraphicsEffect(shadow)
+
+
+# class DBFunctions:
+#     def add(self):
+#         pass
+#
+#     def get_all_file_data():
+#         file_data_list = file_dao.get_all_file_data()
+#         return file_data_list
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

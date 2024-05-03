@@ -9,19 +9,21 @@
 ################################################################################
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
+                            QMetaObject, QObject, QPoint, QRect,
+                            QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
+                           QFont, QFontDatabase, QGradient, QIcon,
+                           QImage, QKeySequence, QLinearGradient, QPainter,
+                           QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QSizePolicy, QWidget)
+                               QPushButton, QSizePolicy, QWidget)
 
-class rtsp_dialog(QWidget,object):
+
+class RtspDialog(QWidget, object):
     def __init__(self):
-        super(rtsp_dialog, self).__init__()
+        super(RtspDialog, self).__init__()
         self.setupUi(self)
+
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
@@ -40,9 +42,9 @@ class rtsp_dialog(QWidget,object):
         self.label.setMinimumSize(QSize(0, 30))
         self.label.setMaximumSize(QSize(16777215, 30))
         self.label.setStyleSheet(u"QLabel{font-family: \"Microsoft YaHei\";\n"
-"font-size: 18px;\n"
-"font-weight: bold;\n"
-"color:white;}")
+                                 "font-size: 18px;\n"
+                                 "font-weight: bold;\n"
+                                 "color:white;}")
 
         self.horizontalLayout.addWidget(self.label)
 
@@ -56,50 +58,50 @@ class rtsp_dialog(QWidget,object):
         self.rtspButton = QPushButton(Form)
         self.rtspButton.setObjectName(u"rtspButton")
         self.rtspButton.setStyleSheet(u"QPushButton{font-family: \"Microsoft YaHei\";\n"
-"font-size: 18px;\n"
-"font-weight: bold;\n"
-"color:white;\n"
-"text-align: center center;\n"
-"padding-left: 5px;\n"
-"padding-right: 5px;\n"
-"padding-top: 4px;\n"
-"padding-bottom: 4px;\n"
-"border-style: solid;\n"
-"border-width: 0px;\n"
-"border-color: rgba(255, 255, 255, 255);\n"
-"border-radius: 3px;\n"
-"background-color: rgba(255,255,255,30);}\n"
-"\n"
-"QPushButton:focus{outline: none;}\n"
-"\n"
-"QPushButton::pressed{font-family: \"Microsoft YaHei\";\n"
-"                     font-size: 16px;\n"
-"                     font-weight: bold;\n"
-"                     color:rgb(200,200,200);\n"
-"                     text-align: center center;\n"
-"                     padding-left: 5px;\n"
-"                     padding-right: 5px;\n"
-"                     padding-top: 4px;\n"
-"                     padding-bottom: 4px;\n"
-"                     border-style: solid;\n"
-"                     border-width: 0px;\n"
-"                     border-color: rgba(255, 255, 255, 255);\n"
-" "
-                        "                    border-radius: 3px;\n"
-"                     background-color:  rgba(255,255,255,150);}\n"
-"\n"
-"QPushButton::hover {\n"
-"border-style: solid;\n"
-"border-width: 0px;\n"
-"border-radius: 0px;\n"
-"background-color: rgba(255,255,255,50);}")
+                                      "font-size: 18px;\n"
+                                      "font-weight: bold;\n"
+                                      "color:white;\n"
+                                      "text-align: center center;\n"
+                                      "padding-left: 5px;\n"
+                                      "padding-right: 5px;\n"
+                                      "padding-top: 4px;\n"
+                                      "padding-bottom: 4px;\n"
+                                      "border-style: solid;\n"
+                                      "border-width: 0px;\n"
+                                      "border-color: rgba(255, 255, 255, 255);\n"
+                                      "border-radius: 3px;\n"
+                                      "background-color: rgba(255,255,255,30);}\n"
+                                      "\n"
+                                      "QPushButton:focus{outline: none;}\n"
+                                      "\n"
+                                      "QPushButton::pressed{font-family: \"Microsoft YaHei\";\n"
+                                      "                     font-size: 16px;\n"
+                                      "                     font-weight: bold;\n"
+                                      "                     color:rgb(200,200,200);\n"
+                                      "                     text-align: center center;\n"
+                                      "                     padding-left: 5px;\n"
+                                      "                     padding-right: 5px;\n"
+                                      "                     padding-top: 4px;\n"
+                                      "                     padding-bottom: 4px;\n"
+                                      "                     border-style: solid;\n"
+                                      "                     border-width: 0px;\n"
+                                      "                     border-color: rgba(255, 255, 255, 255);\n"
+                                      " "
+                                      "                    border-radius: 3px;\n"
+                                      "                     background-color:  rgba(255,255,255,150);}\n"
+                                      "\n"
+                                      "QPushButton::hover {\n"
+                                      "border-style: solid;\n"
+                                      "border-width: 0px;\n"
+                                      "border-radius: 0px;\n"
+                                      "background-color: rgba(255,255,255,50);}")
 
         self.horizontalLayout.addWidget(self.rtspButton)
-
 
         self.retranslateUi(Form)
 
         QMetaObject.connectSlotsByName(Form)
+
     # setupUi
 
     def retranslateUi(self, Form):
@@ -107,4 +109,3 @@ class rtsp_dialog(QWidget,object):
         self.label.setText(QCoreApplication.translate("Form", u"rtsp address:", None))
         self.rtspButton.setText(QCoreApplication.translate("Form", u"confirm", None))
     # retranslateUi
-

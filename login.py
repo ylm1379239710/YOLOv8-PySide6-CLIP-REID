@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (QApplication, QFormLayout, QLabel, QLineEdit,
                                QPushButton, QSizePolicy, QWidget, QMessageBox)
 
 from main import *
-from dao import userDao
-from entity.UserModel import User
+from dao import user_dao
+from entity.user_model import User
 
 
 class Ui_Form(QWidget):

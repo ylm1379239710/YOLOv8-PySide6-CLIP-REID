@@ -71,7 +71,7 @@ class ConfirmMessageBox(QDialog,object):
         self.retranslateUi(Form)
 
         QMetaObject.connectSlotsByName(Form)
-
+    # setupUi
 
     def confirm(self):
         # 发出自定义信号
@@ -79,7 +79,7 @@ class ConfirmMessageBox(QDialog,object):
         # 关闭对话框
         self.accept()
 
-    # setupUi
+
     def retranslateUi(self, Form):
         Form.setWindowTitle(QCoreApplication.translate("Form", u"Form", None))
         self.text.setText(QCoreApplication.translate("Form", u"\u786e\u8ba4\u8fdb\u884c\u8be5\u64cd\u4f5c\u5417\uff1f", None))

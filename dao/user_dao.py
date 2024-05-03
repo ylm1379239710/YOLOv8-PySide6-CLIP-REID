@@ -1,4 +1,4 @@
-from entity.UserModel import User
+from entity.user_model import User
 from utils import db
 
 # 记录当前用户名
@@ -15,7 +15,9 @@ def login(user: User):
     try:
         con = db.getCon()
         cursor = con.cursor()
-        cursor.execute(f"select * from user where name='{user.name}' and password='{user.password}'")
+        query = (f"select * from user where name= %s and password= %s")
+        data = (user.name, user.password)
+        cursor.execute(query, data)
         return cursor.fetchone()
     except Exception as e:
         print(e)
@@ -23,7 +25,6 @@ def login(user: User):
         return None
     finally:
         db.closeCon(con)
-
 
 # def modifyPassword(user: User):
 #     """

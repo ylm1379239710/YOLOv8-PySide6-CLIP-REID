@@ -39,7 +39,7 @@ class DetailsBox(QWidget,object):
     def showImage(self, file_path, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(500, 342)
+        Form.resize(800, 342)
         Form.setMinimumSize(QSize(500, 0))
         self.horizontalLayout = QHBoxLayout(Form)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
@@ -54,7 +54,7 @@ class DetailsBox(QWidget,object):
             if not image.isNull():
                 pixmap = QPixmap.fromImage(image)
         if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(QSize(128,256), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled_pixmap = pixmap.scaled(QSize(256,512), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             # 将图片设置到QLabel上
             self.picture.setPixmap(scaled_pixmap)
 
@@ -177,16 +177,21 @@ class DetailsBox(QWidget,object):
 
 
         self.horizontalLayout.addWidget(self.widget)
-
-
+        self.id_text.setWordWrap(True)
+        self.title_text.setWordWrap(True)
+        self.description_text.setWordWrap(True)
+        self.upload_date_text.setWordWrap(True)
+        self.file_type_text.setWordWrap(True)
+        self.file_size_text.setWordWrap(True)
+        self.file_name_text.setWordWrap(True)
+        self.file_path_text.setWordWrap(True)
         self.retranslateUi(Form)
-
         QMetaObject.connectSlotsByName(Form)
 
     def playVideo(self, video_path, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(500, 342)
+        Form.resize(800, 342)
         Form.setMinimumSize(QSize(500, 0))
         self.horizontalLayout = QHBoxLayout(Form)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
@@ -324,8 +329,14 @@ class DetailsBox(QWidget,object):
 
 
         self.horizontalLayout.addWidget(self.widget)
-
-
+        self.id_text.setWordWrap(True)
+        self.title_text.setWordWrap(True)
+        self.description_text.setWordWrap(True)
+        self.upload_date_text.setWordWrap(True)
+        self.file_type_text.setWordWrap(True)
+        self.file_size_text.setWordWrap(True)
+        self.file_name_text.setWordWrap(True)
+        self.file_path_text.setWordWrap(True)
         self.retranslateUi(Form)
 
         QMetaObject.connectSlotsByName(Form)
