@@ -52,6 +52,7 @@ YPCRer 是在 YoloSide v2 项目基础上进行的再开发，在原有的目标
 ## 📊 代码架构
 
 ![代码架构](https://github.com/ylm1379239710/YOLOv8-PySide6-CLIP-REID/raw/main/img/Architecture.png)
+- [显示不了点这里](https://gitee.com/yang-luming321/yolov8-py-side6-clip-reid/blob/main/README.md#-%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84)
 
 ---
 
@@ -78,6 +79,8 @@ pip install pyside6==6.4.2
 ```
 ---
 ## 🎀 界面展示
+
+- [显示不了点这里](https://gitee.com/yang-luming321/yolov8-py-side6-clip-reid/blob/main/README.md#-%E7%95%8C%E9%9D%A2%E5%B1%95%E7%A4%BA)
 
 登录：
 
