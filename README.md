@@ -45,7 +45,7 @@ YPCRer 是在 YoloSide v2 项目基础上进行的再开发，在原有的目标
 - 操作系统：Windows 11
 - 集成开发工具：Pycharm
 - 版本控制工具：Git
-- 环境管理：Anaconda （Java 版本：11）
+- 环境管理：Anaconda （Python 版本：3.11）
 
 ---
 
