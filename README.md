@@ -74,6 +74,7 @@ pip install tqdm
 pip install ftfy
 pip install regex
 
+pip install ultralytics
 pip install pyside6==6.4.2
 
 ```
