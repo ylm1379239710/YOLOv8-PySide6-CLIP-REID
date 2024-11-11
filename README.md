@@ -74,7 +74,8 @@ pip install tqdm
 pip install ftfy
 pip install regex
 
-pip install ultralytics
+下面的版本要（python为3.11.7版本，下面为适配的版本，版本不一样大概率报错）
+pip install ultralytics==8.0.48
 pip install pyside6==6.4.2
 
 ```
