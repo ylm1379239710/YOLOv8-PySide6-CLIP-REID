@@ -21,7 +21,7 @@ YPCRer 是在 YoloSide v2 项目基础上进行的再开发，在原有的目标
 - Github：[ultralytics](https://github.com/ultralytics/ultralytics?tab=readme-ov-file)
 ---
 ## 🎦 视频展示
-- B站：[]()
+- B站：[YPCRer——基于Yolov8和CLIP-ReID的行人重识别系统](https://www.bilibili.com/video/BV1oTzGYPEsn/?spm_id_from=333.337.search-card.all.click&vd_source=eb243edd059640e52705bf18f8a0d6a8)
 
 ---
 ## 💻 核心技术栈
