@@ -60,7 +60,7 @@ YPCRer 是在 YoloSide v2 项目基础上进行的再开发，在原有的目标
 - 模型准备：下载CLIP-ReId和YOLOv8的模型（模型太大没有上传），要根据模型进行略微修改。
   因为clip-reid的模型太大了上传不了，所以项目的代码架构中reid-models这个文件夹没有需要自己创建，然后放入模型。
   模型的话需要你自己去上面参考项目CLIP-ReID 项目的主页下载,项目里面使用的是Market1501的模型（因为其它模型参数也不一样，需要自己修改参数才能跑其它模型）。
-  ![1a5125544c003754a52c6fb047bc87d3](https://github.com/user-attachments/assets/5912c468-2e08-49c7-9bd3-bcf69b04b529)
+  ![image](https://github.com/user-attachments/assets/dea81516-c805-48a9-8cb1-3c292c57da4a)
 - 安装环境
 
 ```
