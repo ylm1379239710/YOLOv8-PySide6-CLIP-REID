@@ -68,7 +68,8 @@ conda create -n test(虚拟环境名称，可更换)
 conda activate test
 
 下面是安装pytorch，要先安装cuda（根据自己的电脑来，不会可以查教程）
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+(pytorch 2.6版本以上用不了,推荐2.5.0)
+conda install pytorch==2.5.0 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 
 pip install yacs
 pip install timm
