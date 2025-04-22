@@ -82,6 +82,11 @@ pip install regex
 pip install ultralytics==8.0.48
 pip install pyside6==6.4.2
 
+然后是安装mysql(如果不需要数据管理功能，可以注释掉相关代码)
+分为安装mysql服务和安装pymysql包，不会的搜百度
+然后创建数据库，导入sql文件夹中的sql文件
+往里面的表都随便添加一些数据
+
 ```
 ---
 ## 🎀 界面展示
