@@ -69,7 +69,7 @@ conda activate test
 
 下面是安装pytorch，要先安装cuda（根据自己的电脑来，不会可以查教程）
 (pytorch推荐2.1.0，尽量别上高版本，容易出错)
-conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia
 
 
 pip install yacs
