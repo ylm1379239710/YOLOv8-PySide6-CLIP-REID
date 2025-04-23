@@ -68,8 +68,9 @@ conda create -n test(虚拟环境名称，可更换)
 conda activate test
 
 下面是安装pytorch，要先安装cuda（根据自己的电脑来，不会可以查教程）
-(pytorch 2.6版本以上用不了,推荐2.5.0)
-conda install pytorch==2.5.0 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+(pytorch推荐2.1.0，尽量别上高版本，容易出错)
+conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+
 
 pip install yacs
 pip install timm
@@ -82,6 +83,8 @@ pip install regex
 pip install ultralytics==8.0.48
 pip install pyside6==6.4.2
 
+然后numpy下降到1.24版本
+conda install numpy==1.24
 然后是安装mysql(如果不需要数据管理功能，可以注释掉相关代码)
 分为安装mysql服务和安装pymysql包，不会的搜百度
 然后创建数据库，导入sql文件夹中的sql文件
